@@ -1,0 +1,40 @@
+name: Update Fantasy Football Data
+
+on:
+  schedule:
+    # Runs every Tuesday at 10:00 UTC (adjust for your timezone — this is
+    # roughly Tuesday morning US Eastern, after MNF has finished and Sleeper
+    # has finalized weekly scoring). Cron is always in UTC.
+    - cron: '0 10 * * 2'
+  workflow_dispatch: {}   # lets you manually trigger a run from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate data
+        env:
+          LEAGUE_ID: ${{ vars.LEAGUE_ID }}
+        run: python3 scripts/generate_data.py
+
+      - name: Commit updated data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/data/rankings.json
+          git diff --quiet --cached || git commit -m "Auto-update rankings data [skip ci]"
+          git push
