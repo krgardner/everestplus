@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Everest+ Fantasy Football</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 16px; color: #222; }
+  h1 { margin-bottom: 4px; }
+  .meta { color: #666; font-size: 0.9em; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; }
+  th { font-size: 0.8em; text-transform: uppercase; color: #888; }
+  .lucky { color: #2a8f4f; }
+  .unlucky { color: #c0392b; }
+  #status { color: #888; font-style: italic; }
+</style>
+</head>
+<body>
+  <h1 id="league-name">Loading...</h1>
+  <div class="meta" id="meta"></div>
+  <div id="status"></div>
+
+  <h2>Power Rankings</h2>
+  <table id="rankings-table">
+    <thead>
+      <tr><th>#</th><th>Team</th><th>Record</th><th>PF</th><th>All-Play%</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Luck Index</h2>
+  <table id="luck-table">
+    <thead>
+      <tr><th>Team</th><th>Record</th><th>All-Play%</th><th>Luck</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+async function loadData() {
+  try {
+    const res = await fetch('data/rankings.json?_=' + Date.now());
+    const data = await res.json();
+
+    document.getElementById('league-name').textContent = data.league_name || 'Everest+';
+    document.getElementById('meta').textContent =
+      `Season ${data.season} · Through Week ${data.played_weeks} · Updated ${new Date(data.generated_at).toLocaleString()}`;
+
+    if (data.status === 'preseason' || data.rankings.length === 0) {
+      document.getElementById('status').textContent = 'Season hasn\'t started yet — check back once games are played.';
+      return;
+    }
+
+    const rankBody = document.querySelector('#rankings-table tbody');
+    data.rankings.forEach(r => {
+      const row = document.createElement('tr');
+      const record = `${r.wins}-${r.losses}` + (r.ties ? `-${r.ties}` : '');
+      row.innerHTML = `<td>${r.rank}</td><td>${r.team_name}</td><td>${record}</td><td>${r.points_for}</td><td>${(r.all_play_pct*100).toFixed(1)}%</td>`;
+      rankBody.appendChild(row);
+    });
+
+    const luckBody = document.querySelector('#luck-table tbody');
+    data.luck.forEach(l => {
+      const row = document.createElement('tr');
+      const cls = l.luck_delta > 0.1 ? 'lucky' : (l.luck_delta < -0.1 ? 'unlucky' : '');
+      const tag = l.luck_delta > 0.1 ? ' 🍀' : (l.luck_delta < -0.1 ? ' 💀' : '');
+      row.innerHTML = `<td>${l.team_name}</td><td>${l.actual_record}</td><td>${(l.all_play_pct*100).toFixed(1)}%</td><td class="${cls}">${l.luck_delta > 0 ? '+' : ''}${(l.luck_delta*100).toFixed(1)}%${tag}</td>`;
+      luckBody.appendChild(row);
+    });
+  } catch (e) {
+    document.getElementById('status').textContent = 'Could not load data yet. If this is the first run, wait for the Action to complete.';
+    console.error(e);
+  }
+}
+loadData();
+</script>
+</body>
+</html>
